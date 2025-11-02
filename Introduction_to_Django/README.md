@@ -1,0 +1,1 @@
+this is an introductory project usimg django
