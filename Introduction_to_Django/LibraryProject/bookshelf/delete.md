@@ -9,7 +9,3 @@ from your_app.models import Book
 # Retrieve and delete the book
 book = Book.objects.get(title="Nineteen Eighty-Four")
 book.delete()
-
-# Confirm deletion
-print(Book.objects.all())
-# Expected output: <QuerySet []> — confirms no books exist
