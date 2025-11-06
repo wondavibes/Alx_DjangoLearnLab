@@ -1,3 +1,23 @@
 from django.shortcuts import render
+from django.views.generic import DetailView
+from .models import Author, Book, Library, Librarian
 
-# Create your views here.
+
+def list_books(request):
+    """Display a list of all books and their authors using a template."""
+    books = Book.objects.all().select_related("author")
+    return render(request, "relationship_app/book_list.html", {"books": books})
+
+
+class LibraryDetailView(DetailView):
+    """Display details of a specific library and its books."""
+
+    model = Library
+    template_name = "relationship_app/library_detail.html"
+    context_object_name = "library"
+
+    def get_queryset(self):
+        """Optimize the query by prefetching related books and their authors."""
+        return Library.objects.prefetch_related(
+            "books", "books__author"
+        ).select_related("librarian")
