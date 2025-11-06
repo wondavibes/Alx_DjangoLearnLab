@@ -29,7 +29,7 @@ def get_books_in_library(library_name):
 def get_librarian_for_library(library_name):
     try:
         library = Library.objects.get(name=library_name)
-        librarian = library.librarian  # type: ignore
+        librarian = Librarian.objects.get(library=library)  # type: ignore
         print(f"Librarian for {library.name} Library: {librarian.name}")
     except Library.DoesNotExist:
         print(f"No library found with name '{library_name}'")
