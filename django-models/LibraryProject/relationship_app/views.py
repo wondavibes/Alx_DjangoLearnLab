@@ -4,6 +4,7 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from .models import Author, Book
 from .models import Library, Librarian
+from django.contrib.auth.decorators import user_passes_test
 
 
 def list_books(request):
@@ -43,3 +44,26 @@ def register(request):
         form = UserCreationForm()
 
     return render(request, "relationship_app/register.html", {"form": form})
+
+
+def has_role(user, role_name):
+    return (
+        user.is_authenticated
+        and hasattr(user, "profile")
+        and user.profile.role == role_name
+    )
+
+
+@user_passes_test(lambda u: has_role(u, "Admin"))
+def admin_view(request):
+    return render(request, "relationship_app/admin_view.html")
+
+
+@user_passes_test(lambda u: has_role(u, "Librarian"))
+def librarian_view(request):
+    return render(request, "relationship_app/librarian_view.html")
+
+
+@user_passes_test(lambda u: has_role(u, "Member"))
+def member_view(request):
+    return render(request, "relationship_app/member_view.html")
