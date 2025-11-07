@@ -1,10 +1,14 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.detail import DetailView
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from .models import Author, Book
 from .models import Library, Librarian
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, permission_required
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from .forms import BookForm  # You'll need to create this form
 
 
 def list_books(request):
@@ -67,3 +71,62 @@ def librarian_view(request):
 @user_passes_test(lambda u: has_role(u, "Member"))
 def member_view(request):
     return render(request, "relationship_app/member_view.html")
+
+
+@permission_required("relationship_app.can_add_book")
+def add_book(request):
+    if request.method == "POST":
+        form = BookForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("list_books")
+    else:
+        form = BookForm()
+    return render(request, "relationship_app/book_form.html", {"form": form})
+
+
+@permission_required("relationship_app.can_change_book")
+def edit_book(request, pk):
+    book = get_object_or_404(Book, pk=pk)
+    if request.method == "POST":
+        form = BookForm(request.POST, instance=book)
+        if form.is_valid():
+            form.save()
+            return redirect("list_books")
+    else:
+        form = BookForm(instance=book)
+    return render(request, "relationship_app/book_form.html", {"form": form})
+
+
+@permission_required("relationship_app.can_delete_book")
+def delete_book(request, pk):
+    book = get_object_or_404(Book, pk=pk)
+    if request.method == "POST":
+        book.delete()
+        return redirect("list_books")
+    return render(request, "relationship_app/book_confirm_delete.html", {"book": book})
+
+
+# Alternative: Class-based views with permissions
+"""class BookCreateView(PermissionRequiredMixin, CreateView):
+    model = Book
+    form_class = BookForm
+    template_name = "relationship_app/book_form.html"
+    success_url = reverse_lazy("list_books")
+    permission_required = "relationship_app.can_add_book"
+
+
+class BookUpdateView(PermissionRequiredMixin, UpdateView):
+    model = Book
+    form_class = BookForm
+    template_name = "relationship_app/book_form.html"
+    success_url = reverse_lazy("list_books")
+    permission_required = "relationship_app.can_change_book"
+
+
+class BookDeleteView(PermissionRequiredMixin, DeleteView):
+    model = Book
+    template_name = "relationship_app/book_confirm_delete.html"
+    success_url = reverse_lazy("list_books")
+    permission_required = "relationship_app.can_delete_book"
+"""
