@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Books</title>
+    <style>
+        .book-list {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .book-item {
+            border-bottom: 1px solid #ccc;
+            padding: 15px 0;
+        }
+        .book-title {
+            font-size: 1.2em;
+            color: #333;
+        }
+        .book-author {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="book-list">
+        <h1>Books in Library</h1>
+        {% if books %}
+            {% for book in books %}
+                <div class="book-item">
+                    <div class="book-title">{{ book.title }}</div>
+                    <div class="book-author">by {{ book.author.name }}</div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No books are available.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
