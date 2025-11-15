@@ -5,6 +5,12 @@ from django.contrib.auth.decorators import permission_required, user_passes_test
 from .forms import BookForm
 
 
+def book_detail(request, book_id):
+    """Display details of a single book."""
+    book = get_object_or_404(Book, pk=book_id, raise_exception=True)
+    return render(request, "bookshelf/book_detail.html", {"book": book})
+
+
 # Create your views here.
 @permission_required("bookshelf.can_create")
 def add_book(request):
