@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.shortcuts import redirect, get_object_or_404
 from .models import Book
 from django.contrib.auth.decorators import permission_required, user_passes_test
-from .forms import BookForm
+from .forms import BookForm, ExampleForm
 from django import forms
 from django.http import HttpResponse
 
@@ -34,6 +34,17 @@ def search_books(request):
     return render(
         request, "bookshelf/search_results.html", {"form": form, "books": books}
     )
+
+
+def example_form_view(request):
+    if request.method == "POST":
+        form = ExampleForm(request.POST)
+        if form.is_valid():
+            # Process the data in form.cleaned_data
+            return redirect("success_url")  # Replace with your success URL
+    else:
+        form = ExampleForm()
+    return render(request, "bookshelf/example_form.html", {"form": form})
 
 
 # Create your views here.
