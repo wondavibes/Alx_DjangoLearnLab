@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Book, CustomUser
 from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser
 
 
 # Register your models here.
@@ -11,11 +12,9 @@ class BookAdmin(admin.ModelAdmin):
     list_filter = ("publication_year",)
 
 
-@admin.register(CustomUser, CustomUserAdmin)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
 
-    # Fields to display in the user list view
     list_display = (
         "username",
         "email",
@@ -26,7 +25,6 @@ class CustomUserAdmin(UserAdmin):
     )
     list_filter = ("role", "is_staff", "is_superuser", "is_active")
 
-    # Fields to show in the user detail/edit view
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         (
@@ -37,7 +35,7 @@ class CustomUserAdmin(UserAdmin):
                     "last_name",
                     "email",
                     "date_of_birth",
-                    "profile_photo",
+                    "profile_picture",
                     "role",
                 )
             },
@@ -57,7 +55,6 @@ class CustomUserAdmin(UserAdmin):
         ("Important Dates", {"fields": ("last_login", "date_joined")}),
     )
 
-    # Fields to show when creating a new user
     add_fieldsets = (
         (
             None,
@@ -67,7 +64,7 @@ class CustomUserAdmin(UserAdmin):
                     "username",
                     "email",
                     "date_of_birth",
-                    "profile_photo",
+                    "profile_picture",
                     "role",
                     "password1",
                     "password2",
@@ -78,3 +75,7 @@ class CustomUserAdmin(UserAdmin):
 
     search_fields = ("username", "email", "role")
     ordering = ("username",)
+
+
+# ✅ Explicit registration
+admin.site.register(CustomUser, CustomUserAdmin)
