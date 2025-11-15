@@ -11,7 +11,7 @@ class BookAdmin(admin.ModelAdmin):
     list_filter = ("publication_year",)
 
 
-@admin.register(CustomUser)
+@admin.register(CustomUser, CustomUserAdmin)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
 
