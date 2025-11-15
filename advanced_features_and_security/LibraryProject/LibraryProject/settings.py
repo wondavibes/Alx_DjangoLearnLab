@@ -23,10 +23,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-l_pnq#@b7(cx%4)24#lpwb7$l#u)lirr5ny1u256i&&21fp!t_"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = False
 
-ALLOWED_HOSTS = []
+# Ensure your site only runs on the correct host(s)
+ALLOWED_HOSTS = ["yourdomain.com", "www.yourdomain.com"]
 
+# Enable browser XSS protection
+SECURE_BROWSER_XSS_FILTER = True
+
+# Prevent the browser from guessing content types
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Prevent your site from being embedded in iframes (clickjacking protection)
+X_FRAME_OPTIONS = "DENY"
+
+# Ensure cookies are only sent over HTTPS
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+# Optional: Use HTTP Strict Transport Security (HSTS)
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Optional: Redirect all HTTP traffic to HTTPS
+SECURE_SSL_REDIRECT = True
 
 # Application definition
 
@@ -39,6 +61,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "bookshelf",
     "relationship_app",
+    "csp",
 ]
 
 MIDDLEWARE = [
@@ -49,6 +72,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "csp.middleware.CSPMiddleware",
 ]
 
 ROOT_URLCONF = "LibraryProject.urls"

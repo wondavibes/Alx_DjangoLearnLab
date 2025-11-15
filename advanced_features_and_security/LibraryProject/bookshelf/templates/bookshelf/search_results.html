@@ -1,0 +1,22 @@
+
+{% block content %}
+  <h1>Search Books</h1>
+
+  <form method="get" action="{% url 'search_books' %}">
+    {{ form.as_p }}
+    <button type="submit">Search</button>
+  </form>
+
+  {% if books %}
+    <h2>Results:</h2>
+    <ul>
+      {% for book in books %}
+        <li>
+          <strong>{{ book.title }}</strong> by {{ book.author.name }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% elif form.is_bound %}
+    <p>No books found matching your query.</p>
+  {% endif %}
+{% endblock %}
