@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.shortcuts import redirect, get_object_or_404
 from .models import Book
 from django.contrib.auth.decorators import permission_required, user_passes_test
-from .forms import BookForm, ExampleForm
+from .forms import ExampleForm, BookForm
 from django import forms
 from django.http import HttpResponse
 
