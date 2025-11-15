@@ -55,7 +55,7 @@ class CustomUserAdmin(UserAdmin):
                     "last_name",
                     "email",
                     "date_of_birth",
-                    "profile_picture",
+                    "profile_photo",
                     "role",
                 )
             },
@@ -85,7 +85,7 @@ class CustomUserAdmin(UserAdmin):
                     "username",
                     "email",
                     "date_of_birth",
-                    "profile_picture",
+                    "profile_photo",
                     "role",
                     "password1",
                     "password2",

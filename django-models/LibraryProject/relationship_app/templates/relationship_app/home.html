@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Library Home</title>
+</head>
+<body>
+  <h1>Welcome — choose how to sign in</h1>
+  <ul>
+    <li><a href="{% url 'login' %}?next={% url 'member_view' %}">Login as Member</a></li>
+    <li><a href="{% url 'login' %}?next={% url 'librarian_view' %}">Login as Librarian</a></li>
+    <li><a href="{% url 'login' %}?next={% url 'admin_view' %}">Login as Admin</a></li>
+  </ul>
+
+  <p>Or <a href="{% url 'login' %}">standard login</a>.</p>
+</body>
+</html>

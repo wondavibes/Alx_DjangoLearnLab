@@ -10,7 +10,7 @@ class CustomUserCreationForm(UserCreationForm):
             "username",
             "email",
             "date_of_birth",
-            "profile_picture",
+            "profile_photo",
             "password1",
             "password2",
         )
