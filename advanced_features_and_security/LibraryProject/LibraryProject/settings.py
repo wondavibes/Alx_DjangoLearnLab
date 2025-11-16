@@ -148,3 +148,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+SECURE_SSL_REDIRECT = True  # Redirect all HTTP traffic to HTTPS.
+SECURE_HSTS_SECONDS = 31536000  # Set HSTS policy to 1 year.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Include subdomains in HSTS policy.
+SECURE_HSTS_PRELOAD = True  # Enable HSTS preloading.
+SESSION_COOKIE_SECURE = True  # Ensure session cookies are only sent over HTTPS.
+CSRF_COOKIE_SECURE = True  # Ensure CSRF cookies are only sent over HTTPS.
+X_FRAME_OPTIONS = (
+    "DENY"  # To prevent your site from being framed and protect against clickjacking.
+)
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent the browser from guessing content types.
+SECURE_BROWSER_XSS_FILTER = True  # Enable browser XSS protection.
