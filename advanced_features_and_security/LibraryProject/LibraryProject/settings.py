@@ -159,3 +159,7 @@ X_FRAME_OPTIONS = (
 )
 SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent the browser from guessing content types.
 SECURE_BROWSER_XSS_FILTER = True  # Enable browser XSS protection.
+SECURE_PROXY_SSL_HEADER = (
+    "HTTP_X_FORWARDED_PROTO",
+    "https",
+)  # If behind a proxy, ensure it sets this header for HTTPS requests.
