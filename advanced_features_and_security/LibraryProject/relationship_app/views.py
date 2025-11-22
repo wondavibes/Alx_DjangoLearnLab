@@ -2,10 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.detail import DetailView
 from django.contrib.auth import login
 from .models import Author, Book
-from .models import Library, Librarian, CustomUser
+from .models import Library, Librarian
 from django.contrib.auth.decorators import permission_required, user_passes_test
 from django.urls import reverse_lazy, reverse
-from .forms import BookForm, CustomUserCreationForm  # You'll need to create this form
+from .forms import BookForm  # You'll need to create this form
 from django.contrib.auth.views import LoginView as AuthLoginView
 
 
@@ -30,7 +30,7 @@ class LibraryDetailView(DetailView):
 
 
 def register(request):
-    """Handle user registration with a custom user creation form."""
+
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST, request.FILES)
         if form.is_valid():
