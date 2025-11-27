@@ -4,12 +4,13 @@ from .models import Book, Author
 
 
 class BookSerializer(serializers.ModelSerializer):
-    # Represent the Book's author using the author's 'name' (SlugRelatedField).
-    # This is read-only to avoid attempting to create/modify Author objects when
-    # creating/updating Books via this serializer. Using a simple scalar field
-    # (author name) here also prevents infinite recursion when Book is nested
-    # inside AuthorSerializer.
-    author = serializers.SlugRelatedField(read_only=True, slug_field="name")
+    # Use a writable SlugRelatedField for `author` so the API can accept the
+    # author's name on write operations while still representing the author by
+    # name on reads. The `queryset` argument makes the field writable and
+    # instructs DRF how to resolve the provided slug value to an Author.
+    author = serializers.SlugRelatedField(
+        slug_field="name", queryset=Author.objects.all()
+    )
 
     class Meta:
         model = Book
@@ -25,14 +26,13 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class AuthorSerializer(serializers.ModelSerializer):
-     books = BookSerializer(many=True, read_only=True)
+    books = BookSerializer(many=True, read_only=True)
     # Nested representation of an Author's books.
     # - `books` uses the BookSerializer to dynamically serialize all related Book instances.
     # - `many=True` because an Author can have multiple Book objects.
     # - `read_only=True` means Books are displayed but not created/updated via this field.
     # - `source="books"` assumes the Book model's ForeignKey to Author uses
     #   related_name="books". If the ForeignKey uses the default related_name,
-   
 
     class Meta:
         model = Author
