@@ -25,13 +25,14 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class AuthorSerializer(serializers.ModelSerializer):
+     books = BookSerializer(many=True, read_only=True)
     # Nested representation of an Author's books.
     # - `books` uses the BookSerializer to dynamically serialize all related Book instances.
     # - `many=True` because an Author can have multiple Book objects.
     # - `read_only=True` means Books are displayed but not created/updated via this field.
     # - `source="books"` assumes the Book model's ForeignKey to Author uses
     #   related_name="books". If the ForeignKey uses the default related_name,
-    books = BookSerializer(many=True, read_only=True, source="books")
+   
 
     class Meta:
         model = Author
