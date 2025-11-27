@@ -1,13 +1,12 @@
 from django.shortcuts import render
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, filters as drf_filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request as DRFRequest
 from typing import cast
 from django.db.models import QuerySet
-
 from .models import Book
 from .serializers import BookSerializer
 
@@ -19,26 +18,32 @@ class BookListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = BookSerializer
 
-    def get_queryset(self) -> QuerySet[Book]:  # type: ignore[override]
-        """Support simple filtering by author (id or name) and publication year via query params.
+    # Enable filtering, search and ordering. `DjangoFilterBackend` requires `django-filter`.
+    filter_backends = []
+    if DjangoFilterBackend is not None:
+        filter_backends.append(DjangoFilterBackend)
+    # SearchFilter lets clients use `?search=...`
+    filter_backends.append(drf_filters.SearchFilter)
+    # OrderingFilter lets clients use `?ordering=field` and `?ordering=-field`
+    filter_backends.append(drf_filters.OrderingFilter)
 
-        Examples:
-        - /api/books/?author=George
-        - /api/books/?author=3
-        - /api/books/?publication_year=1999
+    # Fields available for exact/contains filtering via DjangoFilterBackend
+    filterset_fields = ["title", "author__name", "publication_year"]
+
+    # Fields to search via DRF's SearchFilter (q=... query param)
+    search_fields = ["title", "author__name"]
+
+    # Fields clients may order by and default ordering
+    ordering_fields = ["title", "publication_year", "author__name"]
+    ordering = ["title"]
+
+    def get_queryset(self) -> QuerySet[Book]:  # type: ignore[override]
+        """Base queryset for the view. Filtering/search handled by backends.
+
+        We keep this method to return the base QuerySet and to preserve a
+        consistent return type for static checkers.
         """
-        qs = Book.objects.all()
-        params = cast(DRFRequest, self.request).query_params
-        author = params.get("author")
-        year = params.get("publication_year") or params.get("year")
-        if author:
-            if author.isdigit():
-                qs = qs.filter(author_id=int(author))
-            else:
-                qs = qs.filter(author__name__icontains=author)
-        if year and year.isdigit():
-            qs = qs.filter(publication_year=int(year))
-        return qs
+        return Book.objects.all()
 
 
 class BookDetailView(generics.RetrieveAPIView):
