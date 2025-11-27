@@ -11,7 +11,7 @@ to run future tests:
     python manage.py test api --verbosity=2  # With details
     python manage.py test api.test_views.BookFilteringTestCase  # Specific class
 Test Database:
-- Uses Django's built-in test database (TestCase creates isolated transactions)
+- Uses Django's built-in test database (TestCase creates isolated transactions) using self.client.login
 - Each test method runs in isolation with auto-rollback
 - Fixtures (Author/Book objects) are created fresh for each test
 
@@ -74,19 +74,24 @@ class BookAPITestCase(TestCase):
 
     # --- Typed request helpers ---
     def api_get(self, path, **kwargs) -> DRFResponse:
-        return cast(DRFResponse, self.client.get(path, **kwargs))
+        client = TestCase.client.fget(self)  # Get the actual client instance
+        return cast(DRFResponse, client.get(path, **kwargs))
 
     def api_post(self, path, data=None, **kwargs) -> DRFResponse:
-        return cast(DRFResponse, self.client.post(path, data, **kwargs))
+        client = TestCase.client.fget(self)
+        return cast(DRFResponse, client.post(path, data, **kwargs))
 
     def api_put(self, path, data=None, **kwargs) -> DRFResponse:
-        return cast(DRFResponse, self.client.put(path, data, **kwargs))
+        client = TestCase.client.fget(self)
+        return cast(DRFResponse, client.put(path, data, **kwargs))
 
     def api_patch(self, path, data=None, **kwargs) -> DRFResponse:
-        return cast(DRFResponse, self.client.patch(path, data, **kwargs))
+        client = TestCase.client.fget(self)
+        return cast(DRFResponse, client.patch(path, data, **kwargs))
 
     def api_delete(self, path, **kwargs) -> DRFResponse:
-        return cast(DRFResponse, self.client.delete(path, **kwargs))
+        client = TestCase.client.fget(self)
+        return cast(DRFResponse, client.delete(path, **kwargs))
 
 
 class BookListTestCase(BookAPITestCase):
@@ -263,14 +268,14 @@ class BookFilteringTestCase(BookAPITestCase):
 
     def test_filter_by_title(self):
         """Test filtering books by exact title match."""
-        response = self.client.get("/api/books/?title=1984")
+        response = self.api_get("/api/books/?title=1984")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "1984")
 
     def test_filter_by_author_name(self):
         """Test filtering books by author name (exact match via DjangoFilterBackend)."""
-        response = self.client.get("/api/books/?author__name=George Orwell")
+        response = self.api_get("/api/books/?author__name=George Orwell")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         titles = {book["title"] for book in response.data}
@@ -278,14 +283,14 @@ class BookFilteringTestCase(BookAPITestCase):
 
     def test_filter_by_publication_year(self):
         """Test filtering books by publication year."""
-        response = self.client.get("/api/books/?publication_year=1949")
+        response = self.api_get("/api/books/?publication_year=1949")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "1984")
 
     def test_filter_multiple_fields(self):
         """Test combining multiple filters."""
-        response = self.client.get(
+        response = self.api_get(
             "/api/books/?author__name=George Orwell&publication_year=1949"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -294,7 +299,7 @@ class BookFilteringTestCase(BookAPITestCase):
 
     def test_filter_no_matches(self):
         """Test that filtering with no matches returns an empty list."""
-        response = self.client.get("/api/books/?publication_year=2099")
+        response = self.api_get("/api/books/?publication_year=2099")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
 
@@ -304,14 +309,14 @@ class BookSearchTestCase(BookAPITestCase):
 
     def test_search_by_title(self):
         """Test searching books by title substring."""
-        response = self.client.get("/api/books/?search=1984")
+        response = self.api_get("/api/books/?search=1984")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "1984")
 
     def test_search_by_author_name(self):
         """Test searching books by author name substring."""
-        response = self.client.get("/api/books/?search=Orwell")
+        response = self.api_get("/api/books/?search=Orwell")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         titles = {book["title"] for book in response.data}
@@ -319,20 +324,20 @@ class BookSearchTestCase(BookAPITestCase):
 
     def test_search_case_insensitive(self):
         """Test that search is case-insensitive."""
-        response = self.client.get("/api/books/?search=orwell")
+        response = self.api_get("/api/books/?search=orwell")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
     def test_search_partial_match(self):
         """Test search with partial word matches."""
-        response = self.client.get("/api/books/?search=Animal")
+        response = self.api_get("/api/books/?search=Animal")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "Animal Farm")
 
     def test_search_no_matches(self):
         """Test searching with no matches returns an empty list."""
-        response = self.client.get("/api/books/?search=NonExistentBook")
+        response = self.api_get("/api/books/?search=NonExistentBook")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
 
@@ -342,35 +347,35 @@ class BookOrderingTestCase(BookAPITestCase):
 
     def test_ordering_by_title_ascending(self):
         """Test ordering books by title in ascending order."""
-        response = self.client.get("/api/books/?ordering=title")
+        response = self.api_get("/api/books/?ordering=title")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         titles = [book["title"] for book in response.data]
         self.assertEqual(titles, ["1984", "Animal Farm", "Foundation", "The Hobbit"])
 
     def test_ordering_by_title_descending(self):
         """Test ordering books by title in descending order."""
-        response = self.client.get("/api/books/?ordering=-title")
+        response = self.api_get("/api/books/?ordering=-title")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         titles = [book["title"] for book in response.data]
         self.assertEqual(titles, ["The Hobbit", "Foundation", "Animal Farm", "1984"])
 
     def test_ordering_by_publication_year_ascending(self):
         """Test ordering books by publication year in ascending order."""
-        response = self.client.get("/api/books/?ordering=publication_year")
+        response = self.api_get("/api/books/?ordering=publication_year")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         years = [book["publication_year"] for book in response.data]
         self.assertEqual(years, [1937, 1945, 1949, 1951])
 
     def test_ordering_by_publication_year_descending(self):
         """Test ordering books by publication year in descending order."""
-        response = self.client.get("/api/books/?ordering=-publication_year")
+        response = self.api_get("/api/books/?ordering=-publication_year")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         years = [book["publication_year"] for book in response.data]
         self.assertEqual(years, [1951, 1949, 1945, 1937])
 
     def test_ordering_combined_with_filter(self):
         """Test ordering combined with filtering."""
-        response = self.client.get(
+        response = self.api_get(
             "/api/books/?author__name=George Orwell&ordering=-publication_year"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -379,7 +384,7 @@ class BookOrderingTestCase(BookAPITestCase):
 
     def test_ordering_combined_with_search(self):
         """Test ordering combined with searching."""
-        response = self.client.get("/api/books/?search=Orwell&ordering=title")
+        response = self.api_get("/api/books/?search=Orwell&ordering=title")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         titles = [book["title"] for book in response.data]
         self.assertEqual(titles, ["1984", "Animal Farm"])
@@ -391,23 +396,23 @@ class BookPermissionTestCase(BookAPITestCase):
     def test_list_allows_any(self):
         """Test that listing books allows any user (authenticated or not)."""
         # Unauthenticated
-        response = self.client.get("/api/books/")
+        response = self.api_get("/api/books/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Authenticated
         self.client.force_authenticate(user=self.auth_user)
-        response = self.client.get("/api/books/")
+        response = self.api_get("/api/books/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_retrieve_allows_any(self):
         """Test that retrieving a book allows any user."""
         # Unauthenticated
-        response = self.client.get(f"/api/books/{self.book1.pk}/")
+        response = self.api_get(f"/api/books/{self.book1.pk}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Authenticated
         self.client.force_authenticate(user=self.auth_user)
-        response = self.client.get(f"/api/books/{self.book1.pk}/")
+        response = self.api_get(f"/api/books/{self.book1.pk}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_requires_authentication(self):
@@ -418,26 +423,26 @@ class BookPermissionTestCase(BookAPITestCase):
             "publication_year": 2000,
         }
         # Unauthenticated
-        response = self.client.post("/api/books/create/", payload, format="json")
+        response = self.api_post("/api/books/create/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Authenticated
         self.client.force_authenticate(user=self.auth_user)
-        response = self.client.post("/api/books/create/", payload, format="json")
+        response = self.api_post("/api/books/create/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_update_requires_authentication(self):
         """Test that updating a book requires authentication."""
         payload = {"title": "Updated Title"}
         # Unauthenticated
-        response = self.client.patch(
+        response = self.api_patch(
             f"/api/books/update/{self.book1.pk}/", payload, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Authenticated
         self.client.force_authenticate(user=self.auth_user)
-        response = self.client.patch(
+        response = self.api_patch(
             f"/api/books/update/{self.book1.pk}/", payload, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -445,19 +450,19 @@ class BookPermissionTestCase(BookAPITestCase):
     def test_delete_requires_authentication(self):
         """Test that deleting a book requires authentication."""
         # Unauthenticated
-        response = self.client.delete(f"/api/books/delete/{self.book1.pk}/")
+        response = self.api_delete(f"/api/books/delete/{self.book1.pk}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Authenticated
         self.client.force_authenticate(user=self.auth_user)
-        response = self.client.delete(f"/api/books/delete/{self.book1.pk}/")
+        response = self.api_delete(f"/api/books/delete/{self.book1.pk}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_authenticated_user_can_modify_any_book(self):
         """Test that any authenticated user can modify any book (no ownership check)."""
         self.client.force_authenticate(user=self.auth_user)
         payload = {"title": "Modified by First User"}
-        response = self.client.patch(
+        response = self.api_patch(
             f"/api/books/update/{self.book1.pk}/", payload, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -465,7 +470,7 @@ class BookPermissionTestCase(BookAPITestCase):
         # Switch to different user and verify they can also modify
         self.client.force_authenticate(user=self.other_user)
         payload = {"title": "Modified by Second User"}
-        response = self.client.patch(
+        response = self.api_patch(
             f"/api/books/update/{self.book1.pk}/", payload, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -482,7 +487,7 @@ class BookDataIntegrityTestCase(BookAPITestCase):
             "author": "George Orwell",
             "publication_year": 1950,
         }
-        response = self.client.post("/api/books/create/", payload, format="json")
+        response = self.api_post("/api/books/create/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("id", response.data)
         self.assertEqual(response.data["title"], "Test Book")
@@ -491,7 +496,7 @@ class BookDataIntegrityTestCase(BookAPITestCase):
 
     def test_retrieve_response_includes_all_fields(self):
         """Test that the retrieve response includes all book fields."""
-        response = self.client.get(f"/api/books/{self.book1.pk}/")
+        response = self.api_get(f"/api/books/{self.book1.pk}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["id"], self.book1.pk)
         self.assertEqual(response.data["title"], "1984")
@@ -500,7 +505,7 @@ class BookDataIntegrityTestCase(BookAPITestCase):
 
     def test_list_response_structure(self):
         """Test that the list response is a list of book objects."""
-        response = self.client.get("/api/books/")
+        response = self.api_get("/api/books/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
         self.assertTrue(len(response.data) > 0)
@@ -515,9 +520,10 @@ class BookDataIntegrityTestCase(BookAPITestCase):
             "author": "George Orwell",
             "publication_year": 1949,
         }
-        response = self.client.put(
+        response = self.api_put(
             f"/api/books/update/{self.book1.pk}/", payload, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "Updated Title")
         self.assertEqual(response.data["publication_year"], 1949)
+
