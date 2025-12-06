@@ -1,0 +1,32 @@
+{% extends 'blog/base.html' %}
+
+{% block title %}Profile - Django Blog{% endblock %}
+
+{% block content %}
+<div class="profile-card">
+    <h2>Your Profile</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'profile' %}">
+        {% csrf_token %}
+        <fieldset>
+            <legend>Account</legend>
+            {{ u_form.as_p }}
+        </fieldset>
+
+        <fieldset>
+            <legend>Profile</legend>
+            {% if request.user.profile.avatar %}
+                <img src="{{ request.user.profile.avatar.url }}" alt="avatar" class="avatar-preview">
+            {% endif %}
+            {{ p_form.as_p }}
+        </fieldset>
+
+        <button type="submit" class="btn">Save changes</button>
+    </form>
+</div>
+{% endblock %}

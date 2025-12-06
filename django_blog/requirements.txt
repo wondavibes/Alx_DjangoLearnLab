@@ -1,0 +1,4 @@
+django
+djangorestframework
+Pillow
+psycopg2-binary
