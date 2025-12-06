@@ -14,12 +14,12 @@ urlpatterns = [
     path("post/<int:pk>/delete/", views.PostDeleteView.as_view(), name="post_delete"),
     # Comment URLs
     path(
-        "post/<int:post_pk>/comments/new/",
+        "post/<int:pk>/comments/new/",
         views.CommentCreateView.as_view(),
         name="comment_create",
     ),
     path(
-        "comment/<int:pk>/edit/",
+        "comment/<int:pk>/update/",
         views.CommentUpdateView.as_view(),
         name="comment_update",
     ),
