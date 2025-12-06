@@ -93,30 +93,27 @@ class PostDetailView(DetailView):
         return context
 
 
-@login_required
-def comment_create(request, post_pk):
-    post = get_object_or_404(Post, pk=post_pk)
+class CommentCreateView(LoginRequiredMixin, CreateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = "blog/post_detail.html"
 
-    if request.method == "POST":
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.post = post
-            comment.author = request.user
-            comment.save()
-            messages.success(request, "Comment added.")
-            return redirect("post_detail", pk=post_pk)
-        else:
-            # Re-render the post detail page with the invalid form so errors are visible
-            post: Post = post
-            context = {
-                "post": post,
-                "comment_form": form,
-                "comments": post.comments.order_by("-created_at"),  # type: ignore
-            }
-            return render(request, "blog/post_detail.html", context)
-    # If not POST simply redirect back to post detail
-    return redirect("post_detail", pk=post_pk)
+    def form_valid(self, form):
+        post: Post = get_object_or_404(Post, pk=self.kwargs["post_pk"])  # type: ignore
+        form.instance.post = post
+        form.instance.author = self.request.user
+        messages.success(self.request, "Comment added.")
+        return super().form_valid(form)
+
+    def get_success_url(self) -> str:
+        return reverse_lazy("post_detail", kwargs={"pk": self.kwargs["post_pk"]})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        post: Post = get_object_or_404(Post, pk=self.kwargs["post_pk"])
+        context["post"] = post
+        context["comments"] = post.comments.order_by("-created_at")  # type: ignore
+        return context
 
 
 class CommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -152,7 +149,6 @@ class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     def get_success_url(self) -> str:
         comment: Comment = self.get_object()  # type: ignore
         return reverse_lazy("post_detail", kwargs={"pk": comment.post.pk})
-        return reverse_lazy("post_detail", kwargs={"pk": self.get_object().post.pk})
 
 
 class PostCreateView(LoginRequiredMixin, CreateView):
