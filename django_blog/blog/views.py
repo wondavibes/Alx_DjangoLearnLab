@@ -80,45 +80,50 @@ def profile(request):
 
 
 class PostListView(ListView):
+    """
+    Main view to list all blog posts, potentially with pagination.
+    """
     model = Post
-    queryset = Post.objects.all().order_by("-published_date")  # Default queryset
-    template_name = "blog/post_list.html"
-    context_object_name = "posts"
-    paginate_by = 10  # Optional: Add pagination
+    queryset = Post.objects.all().order_by('-published_date') 
+    template_name = 'blog/post_list.html'
+    context_object_name = 'posts'
+    paginate_by = 10 
+    tag = None # Initialize tag attribute
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # We only set current_tag if it was set in a subclass (like PostByTagListView)
+        if self.tag: 
+            context['current_tag'] = self.tag
+            context['title'] = f"Posts Tagged: {self.tag.name}"
+        else:
+            context['title'] = "All Blog Posts"
+
+        return context
+    
+    # We move the filtering logic to the subclass
     def get_queryset(self):
-        """
-        Dynamically filters the queryset based on a tag slug passed in the URL kwargs.
-        """
-        queryset = super().get_queryset()
-        tag_slug = self.kwargs.get("tag_slug")
+        return super().get_queryset().distinct()
+
+
+class PostByTagListView(PostListView):
+    """
+    Specific view to list posts filtered by a specific tag slug provided in the URL.
+    Inherits all base functionality from PostListView.
+    """
+    def get_queryset(self):
+        # Start with the base queryset defined in PostListView
+        queryset = super().get_queryset() 
+        tag_slug = self.kwargs.get('tag_slug')
 
         if tag_slug:
             # We look up the specific tag dynamically
-            tag = get_object_or_404(Tag, slug=tag_slug)
+            self.tag = get_object_or_404(Tag, slug=tag_slug)
             # Filter the posts to only include those associated with that tag
-            queryset = queryset.filter(tags__in=[tag])
-            # Store the tag object in self for use in get_context_data
-            self.tag = tag
-        else:
-            self.tag = None
+            queryset = queryset.filter(tags__in=[self.tag])
+            
+        return queryset
 
-        return (
-            queryset.distinct()
-        )  # Use distinct to prevent duplicates if a post has multiple relevant tags
-
-    def get_context_data(self, **kwargs):
-        """
-        Adds extra context data (like the current tag name) to the template.
-        """
-        context = super().get_context_data(**kwargs)
-        if self.tag:
-            context["current_tag"] = self.tag
-            context["title"] = f"Posts Tagged: {self.tag.name}"
-        else:
-            context["title"] = "All Blog Posts"
-
-        return context
 
 
 class PostDetailView(DetailView):
