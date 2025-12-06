@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Profile
+from .models import Profile, Post
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -29,3 +29,21 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
         fields = ["bio", "avatar"]
+
+
+class PostForm(forms.ModelForm):
+    class Meta:
+        model = Post
+        fields = ["title", "content"]
+        widgets = {
+            "title": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Post title"}
+            ),
+            "content": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Post content",
+                    "rows": 10,
+                }
+            ),
+        }

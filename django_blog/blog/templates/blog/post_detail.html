@@ -4,11 +4,30 @@
 
 {% block content %}
 <article class="post-detail">
-    <h1>{{ post.title }}</h1>
-    <p class="post-meta">By {{ post.author.username }} on {{ post.published_date|date:"F d, Y H:i" }}</p>
+    <div class="post-header">
+        <h1>{{ post.title }}</h1>
+        <p class="post-meta">
+            By <strong>{{ post.author.username }}</strong> 
+            on <time>{{ post.published_date|date:"F d, Y H:i" }}</time>
+        </p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
     <div class="post-content">
         {{ post.content|linebreaks }}
     </div>
-    <a href="/" class="back-link">← Back to Posts</a>
+
+    <div class="post-actions">
+        <a href="{% url 'post_list' %}" class="back-link">← Back to Posts</a>
+        {% if user == post.author %}
+            <a href="{% url 'post_update' post.pk %}" class="edit-btn">Edit Post</a>
+            <a href="{% url 'post_delete' post.pk %}" class="delete-btn">Delete Post</a>
+        {% endif %}
+    </div>
 </article>
 {% endblock %}
