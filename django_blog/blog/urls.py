@@ -28,4 +28,9 @@ urlpatterns = [
         views.CommentDeleteView.as_view(),
         name="comment_delete",
     ),
+    # Search and Tag URLs
+    path("search/", views.post_search, name="post_search"),
+    path(
+        "tags/<slug:tag_slug>/", views.PostListView.as_view(), name="post_list_by_tag"
+    ),
 ]

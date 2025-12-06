@@ -10,6 +10,7 @@ from django.views.generic import (
     UpdateView,
     DeleteView,
 )
+
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
@@ -21,6 +22,9 @@ from .forms import (
     CommentForm,
 )
 from .models import Post, Comment
+from django.db.models import Q
+from taggit.models import Tag
+from django.conf import settings
 
 
 class AppLoginView(LoginView):
@@ -72,13 +76,49 @@ def profile(request):
     return render(request, "blog/profile.html", context)
 
 
-# CRUD Views for Posts
+# CRUD Views for Posts and Comments
+
+
 class PostListView(ListView):
     model = Post
+    queryset = Post.objects.all().order_by("-published_date")  # Default queryset
     template_name = "blog/post_list.html"
     context_object_name = "posts"
-    ordering = ["-published_date"]
-    paginate_by = 10
+    paginate_by = 10  # Optional: Add pagination
+
+    def get_queryset(self):
+        """
+        Dynamically filters the queryset based on a tag slug passed in the URL kwargs.
+        """
+        queryset = super().get_queryset()
+        tag_slug = self.kwargs.get("tag_slug")
+
+        if tag_slug:
+            # We look up the specific tag dynamically
+            tag = get_object_or_404(Tag, slug=tag_slug)
+            # Filter the posts to only include those associated with that tag
+            queryset = queryset.filter(tags__in=[tag])
+            # Store the tag object in self for use in get_context_data
+            self.tag = tag
+        else:
+            self.tag = None
+
+        return (
+            queryset.distinct()
+        )  # Use distinct to prevent duplicates if a post has multiple relevant tags
+
+    def get_context_data(self, **kwargs):
+        """
+        Adds extra context data (like the current tag name) to the template.
+        """
+        context = super().get_context_data(**kwargs)
+        if self.tag:
+            context["current_tag"] = self.tag
+            context["title"] = f"Posts Tagged: {self.tag.name}"
+        else:
+            context["title"] = "All Blog Posts"
+
+        return context
 
 
 class PostDetailView(DetailView):
@@ -198,3 +238,35 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     def handle_no_permission(self):
         messages.error(self.request, "You can only delete your own posts.")
         return redirect("post_detail", pk=self.get_object().pk)
+
+
+def post_search(request):
+    query = request.GET.get("q")
+    results = Post.objects.all()
+
+    if query:
+        # Use Q objects to search title OR content OR tags
+        results = results.filter(
+            Q(title__icontains=query)
+            | Q(content__icontains=query)
+            | Q(tags__name__icontains=query)  # Search within the tag names
+        ).distinct()  # Use distinct() to avoid duplicate posts if they match multiple criteria
+
+    context = {
+        "query": query,
+        "posts": results,
+    }
+    return render(request, "blog/search_results.html", context)
+
+
+def post_list_by_tag(request, tag_slug):
+    tag = get_object_or_404(
+        Tag, slug=tag_slug
+    )  # Get the specific tag object (Note: Tag model is dynamic)
+    posts = Post.objects.filter(tags__in=[tag])  # Filter posts that have this tag
+
+    context = {
+        "tag": tag,
+        "posts": posts,
+    }
+    return render(request, "blog/post_list_by_tag.html", context)
