@@ -22,8 +22,8 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data["user"]
-        token = serializer.validated_data["token"]
+        user = serializer.validated_data["user"]  # type: ignore
+        token = serializer.validated_data["token"]  # type: ignore
 
         return Response(
             {"token": token, "user": UserSerializer(user).data},
