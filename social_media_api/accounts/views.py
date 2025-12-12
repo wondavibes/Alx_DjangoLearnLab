@@ -72,3 +72,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
         request.user.following.remove(user_to_unfollow)
         return Response({"detail": f"You have unfollowed {user_to_unfollow.username}."})
+
+class UserView(generics.GenericAPIView):
+    ...
