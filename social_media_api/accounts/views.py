@@ -21,15 +21,12 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data["user"]
 
-        refresh = RefreshToken.for_user(user)
+        user = serializer.validated_data["user"]
+        token = serializer.validated_data["token"]
+
         return Response(
-            {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": UserSerializer(user).data,
-            },
+            {"token": token, "user": UserSerializer(user).data},
             status=status.HTTP_200_OK,
         )
 
