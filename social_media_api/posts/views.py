@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from notifications.models import Notification
 from accounts.models import CustomUser
+from django.contrib.contenttypes.models import ContentType
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -94,10 +95,72 @@ class CommentViewSet(viewsets.ModelViewSet):
         post_author = comment.post.author
         if post_author != self.request.user:
             Notification.objects.create(
-                recipient = post_author,
-                actor = self.request.user,
-                verb = "commented on your post",
-                target = comment.post,
-                target_content_type = ContentType.objects.get_for_model(comment.post.__class__),
-                target_id = comment.post.id,
-                )
+                recipient=post_author,
+                actor=self.request.user,
+                verb="commented on your post",
+                target=comment.post,
+                target_content_type=ContentType.objects.get_for_model(
+                    comment.post.__class__
+                ),
+                target_id=comment.post.id,
+            )
+
+
+# if using generics instead of viewsets for like on posts
+from rest_framework import generics, status
+from rest_framework.response import Response
+from .models import Post, Like
+from django.shortcuts import get_object_or_404
+from django.contrib.contenttypes.models import ContentType
+from rest_framework.permissions import IsAuthenticated
+from notifications.models import Notification
+
+
+class LikePostView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        user = request.user
+
+        if Like.objects.filter(post=post, user=user).exists():
+            return Response(
+                {"detail": "You have already liked this post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        Like.objects.get_or_create(post=post, user=user)
+
+        if post.author != user:
+            Notification.objects.create(
+                recipient=post.author,
+                actor=user,
+                verb="liked your post",
+                target=post,
+                target_content_type=ContentType.objects.get_for_model(post),
+                target_id=post.id,
+            )
+
+        return Response(
+            {"detail": "Post liked successfully."}, status=status.HTTP_201_CREATED
+        )
+
+
+class UnlikePostView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        user = request.user
+
+        like = Like.objects.filter(post=post, user=user).first()
+        if not like:
+            return Response(
+                {"detail": "You have not liked this post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        like.delete()
+        return Response(
+            {"detail": "Post unliked successfully."}, status=status.HTTP_200_OK
+        )
