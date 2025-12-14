@@ -129,7 +129,7 @@ class LikePostView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        Like.objects.get_or_create(post=post, user=user)
+        Like.objects.get_or_create(user=request.user, post=post)
 
         if post.author != user:
             Notification.objects.create(
