@@ -1,11 +1,12 @@
 # posts/views.py
 from rest_framework import viewsets, permissions
-from .models import Post, Comment
+from .models import Post, Comment, Like
 from .serializers import PostSerializer, CommentSerializer
 from .permissions import IsAuthorOrReadOnly
 from .pagination import PostPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from notifications.models import Notification
 from accounts.models import CustomUser
 
 
@@ -38,6 +39,48 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = PostSerializer(feed_posts, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        user = request.user
+
+        # prevent duplicate likes
+        if Like.objects.filter(post=post, user=user).exists():
+            return Response(
+                {"detail": "You have already liked this post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # create the like
+        Like.objects.create(post=post, user=user)
+        # create a notification
+        if post.author != user:
+            Notification.objects.create(
+                recipient=post.author,
+                actor=user,
+                verb="liked your post",
+                target=post,
+                target_content_type=ContentType.objects.get_for_model(post),
+                target_object_id=post.id,
+            )
+        return Response(
+            {"detail": "Post liked successfully."}, status=status.HTTP_201_CREATED
+        )
+
+    def unlike(self, request, pk=None):
+        post = self.get_object()
+        user = request.user
+
+        like = Like.objects.filter(post=post, user=user).first()
+        if not like:
+            return Response(
+                {"detail": "You have not liked this post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        like.delete()
+        return Response(
+            {"detail": "Post unliked successfully."}, status=status.HTTP_200_OK
+        )
+
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all().order_by("-created_at")
@@ -45,4 +88,16 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsAuthorOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        comment = serializer.save(author=self.request.user)
+
+        # notify post author about new comment
+        post_author = comment.post.author
+        if post_author != self.request.user:
+            Notification.objects.create(
+                recipient = post_author,
+                actor = self.request.user,
+                verb = "commented on your post",
+                target = comment.post,
+                target_content_type = ContentType.objects.get_for_model(comment.post.__class__),
+                target_id = comment.post.id,
+                )

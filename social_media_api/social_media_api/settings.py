@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "accounts",
     "posts",
+    "notifications",
     "rest_framework.authtoken",
 ]
 

@@ -58,6 +58,14 @@ class UserViewSet(viewsets.ModelViewSet):
             )
 
         request.user.following.add(user_to_follow)
+        Notification.objects.create(
+        recipient=user_to_follow,
+        actor=user,
+        verb="started following you",
+        target=user,
+        target_content_type=ContentType.objects.get_for_model(user.__class__),
+        target_object_id=user.id,)
+
         return Response({"detail": f"You are now following {user_to_follow.username}."})
 
     @action(detail=True, methods=["post"])
