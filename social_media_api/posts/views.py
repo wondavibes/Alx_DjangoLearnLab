@@ -99,10 +99,6 @@ class CommentViewSet(viewsets.ModelViewSet):
                 actor=self.request.user,
                 verb="commented on your post",
                 target=comment.post,
-                target_content_type=ContentType.objects.get_for_model(
-                    comment.post.__class__
-                ),
-                target_id=comment.post.id,
             )
 
 
@@ -138,7 +134,7 @@ class LikePostView(generics.GenericAPIView):
                 verb="liked your post",
                 target=post,
                 target_content_type=ContentType.objects.get_for_model(post),
-                target_id=post.id,
+                target_id=post.pk,
             )
 
         return Response(
