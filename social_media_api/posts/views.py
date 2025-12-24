@@ -1,13 +1,24 @@
 # posts/views.py
-from rest_framework import viewsets, permissions
+from typing import cast
+from django.db import transaction
+from django.db.models.query import QuerySet
+from django.contrib.contenttypes.models import ContentType
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets, permissions, generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import NotAuthenticated
+
 from .models import Post, Comment, Like
 from .serializers import PostSerializer, CommentSerializer
 from .permissions import IsAuthorOrReadOnly
 from .pagination import PostPagination
-from rest_framework.response import Response
+
 from notifications.models import Notification
 from accounts.models import CustomUser
-from django.contrib.contenttypes.models import ContentType
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -38,20 +49,6 @@ class CommentViewSet(viewsets.ModelViewSet):
                 verb="commented on your post",
                 target=comment.post,
             )
-
-
-from rest_framework import generics, status
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from django.contrib.contenttypes.models import ContentType
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import TokenAuthentication, SessionAuthentication
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.exceptions import NotAuthenticated
-from notifications.models import Notification
-from django.db import transaction
-from django.db.models.query import QuerySet
-from typing import cast
 
 
 class FeedView(generics.ListAPIView):
@@ -90,13 +87,13 @@ class LikePostView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
+        post = generics.get_object_or_404(Post, pk=pk)
         user = request.user
 
         # Use atomic get_or_create to avoid race conditions where two requests
         # could create duplicate Like rows simultaneously.
         with transaction.atomic():
-            like, created = Like.objects.get_or_create(post=post, user=user)
+            like, created = Like.objects.get_or_create(user=request.user, post=post)
             if not created:
                 return Response(
                     {"detail": "You have already liked this post."},
@@ -128,7 +125,7 @@ class UnlikePostView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
+        post = generics.get_object_or_404(Post, pk=pk)
         user = request.user
         deleted_count, _ = Like.objects.filter(post=post, user=user).delete()
         if deleted_count == 0:
