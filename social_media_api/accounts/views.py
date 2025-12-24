@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from .models import CustomUser
 from .serializers import (
     RegisterSerializer,
@@ -42,44 +42,42 @@ class UserDetailView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def follow_user(request, user_id):
+    try:
+        target = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["post"])
-    def follow(self, request, pk=None):
-        user_to_follow = self.get_object()
+    if target == request.user:
+        return Response(
+            {"detail": "You cannot follow yourself."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-        if user_to_follow == request.user:
-            return Response(
-                {"detail": "You cannot follow yourself."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    request.user.following.add(target)
+    return Response(
+        {"detail": f"You are now following {target.username}."},
+        status=status.HTTP_200_OK,
+    )
 
-        request.user.following.add(user_to_follow)
-        Notification.objects.create(
-        recipient=user_to_follow,
-        actor=user,
-        verb="started following you",
-        target=user,
-        target_content_type=ContentType.objects.get_for_model(user.__class__),
-        target_object_id=user.id,)
 
-        return Response({"detail": f"You are now following {user_to_follow.username}."})
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def unfollow_user(request, user_id):
+    try:
+        target = CustomUser.objects.get(pk=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["post"])
-    def unfollow(self, request, pk=None):
-        user_to_unfollow = self.get_object()
+    if target == request.user:
+        return Response(
+            {"detail": "You cannot unfollow yourself."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-        if user_to_unfollow == request.user:
-            return Response(
-                {"detail": "You cannot unfollow yourself."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        request.user.following.remove(user_to_unfollow)
-        return Response({"detail": f"You have unfollowed {user_to_unfollow.username}."})
-
-class UserView(generics.GenericAPIView):
-    ...
+    request.user.following.remove(target)
+    return Response(
+        {"detail": f"You have unfollowed {target.username}."}, status=status.HTTP_200_OK
+    )

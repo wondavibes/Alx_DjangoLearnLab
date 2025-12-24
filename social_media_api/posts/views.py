@@ -4,7 +4,6 @@ from .models import Post, Comment, Like
 from .serializers import PostSerializer, CommentSerializer
 from .permissions import IsAuthorOrReadOnly
 from .pagination import PostPagination
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from notifications.models import Notification
 from accounts.models import CustomUser
@@ -20,67 +19,6 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
-
-    @action(detail=False, methods=["get"], url_path="feed")
-    def feed(self, request):
-        user = request.user
-        # Get posts from users the current user is following
-        following_users = user.following.all()
-
-        # filter posts by following users and order by created_at descending
-        feed_posts = Post.objects.filter(author__in=following_users).order_by(
-            "-created_at"
-        )
-        # Paginate the results
-        page = self.paginate_queryset(feed_posts)
-        if page is not None:
-            serializer = PostSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = PostSerializer(feed_posts, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"])
-    def like(self, request, pk=None):
-        post = self.get_object()
-        user = request.user
-
-        # prevent duplicate likes
-        if Like.objects.filter(post=post, user=user).exists():
-            return Response(
-                {"detail": "You have already liked this post."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # create the like
-        Like.objects.create(post=post, user=user)
-        # create a notification
-        if post.author != user:
-            Notification.objects.create(
-                recipient=post.author,
-                actor=user,
-                verb="liked your post",
-                target=post,
-                target_content_type=ContentType.objects.get_for_model(post),
-                target_object_id=post.id,
-            )
-        return Response(
-            {"detail": "Post liked successfully."}, status=status.HTTP_201_CREATED
-        )
-
-    def unlike(self, request, pk=None):
-        post = self.get_object()
-        user = request.user
-
-        like = Like.objects.filter(post=post, user=user).first()
-        if not like:
-            return Response(
-                {"detail": "You have not liked this post."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        like.delete()
-        return Response(
-            {"detail": "Post unliked successfully."}, status=status.HTTP_200_OK
-        )
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -102,21 +40,56 @@ class CommentViewSet(viewsets.ModelViewSet):
             )
 
 
-# if using generics instead of viewsets for like on posts
 from rest_framework import generics, status
 from rest_framework.response import Response
-from .models import Post, Like
 from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import NotAuthenticated
 from notifications.models import Notification
+from django.db.models.query import QuerySet
+from typing import cast
+
+
+class FeedView(generics.ListAPIView):
+    """Return posts from users the authenticated user is following,
+    ordered by most recent first, paginated."""
+
+    authentication_classes = [
+        JWTAuthentication,
+        TokenAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+    pagination_class = PostPagination
+
+    def get_queryset(self) -> QuerySet[Post]:
+        user = self.request.user
+        if not getattr(user, "is_authenticated", False):
+            raise NotAuthenticated()
+
+        # Ensure static checkers know this is the project's CustomUser
+        if not isinstance(user, CustomUser):
+            raise NotAuthenticated()
+
+        user = cast(CustomUser, user)
+        following_users = user.following.all()
+        return Post.objects.filter(author__in=following_users).order_by("-created_at")
 
 
 class LikePostView(generics.GenericAPIView):
+    authentication_classes = [
+        JWTAuthentication,
+        TokenAuthentication,
+        SessionAuthentication,
+    ]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        post = generics.get_object_or_404(Post, pk=pk)
+        post = get_object_or_404(Post, pk=pk)
         user = request.user
 
         if Like.objects.filter(post=post, user=user).exists():
@@ -134,7 +107,7 @@ class LikePostView(generics.GenericAPIView):
                 verb="liked your post",
                 target=post,
                 target_content_type=ContentType.objects.get_for_model(post),
-                target_id=post.pk,
+                target_object_id=post.pk,
             )
 
         return Response(
@@ -143,6 +116,11 @@ class LikePostView(generics.GenericAPIView):
 
 
 class UnlikePostView(generics.GenericAPIView):
+    authentication_classes = [
+        JWTAuthentication,
+        TokenAuthentication,
+        SessionAuthentication,
+    ]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
