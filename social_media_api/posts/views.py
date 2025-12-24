@@ -49,6 +49,7 @@ from rest_framework.authentication import TokenAuthentication, SessionAuthentica
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import NotAuthenticated
 from notifications.models import Notification
+from django.db import transaction
 from django.db.models.query import QuerySet
 from typing import cast
 
@@ -92,23 +93,26 @@ class LikePostView(generics.GenericAPIView):
         post = get_object_or_404(Post, pk=pk)
         user = request.user
 
-        if Like.objects.filter(post=post, user=user).exists():
-            return Response(
-                {"detail": "You have already liked this post."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Use atomic get_or_create to avoid race conditions where two requests
+        # could create duplicate Like rows simultaneously.
+        with transaction.atomic():
+            like, created = Like.objects.get_or_create(post=post, user=user)
+            if not created:
+                return Response(
+                    {"detail": "You have already liked this post."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        Like.objects.get_or_create(user=request.user, post=post)
-
-        if post.author != user:
-            Notification.objects.create(
-                recipient=post.author,
-                actor=user,
-                verb="liked your post",
-                target=post,
-                target_content_type=ContentType.objects.get_for_model(post),
-                target_object_id=post.pk,
-            )
+            # create a notification only when a new like was created
+            if post.author != user:
+                Notification.objects.create(
+                    recipient=post.author,
+                    actor=user,
+                    verb="liked your post",
+                    target=post,
+                    target_content_type=ContentType.objects.get_for_model(post),
+                    target_object_id=post.pk,
+                )
 
         return Response(
             {"detail": "Post liked successfully."}, status=status.HTTP_201_CREATED
@@ -126,15 +130,13 @@ class UnlikePostView(generics.GenericAPIView):
     def post(self, request, pk):
         post = get_object_or_404(Post, pk=pk)
         user = request.user
-
-        like = Like.objects.filter(post=post, user=user).first()
-        if not like:
+        deleted_count, _ = Like.objects.filter(post=post, user=user).delete()
+        if deleted_count == 0:
             return Response(
                 {"detail": "You have not liked this post."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        like.delete()
         return Response(
             {"detail": "Post unliked successfully."}, status=status.HTTP_200_OK
         )

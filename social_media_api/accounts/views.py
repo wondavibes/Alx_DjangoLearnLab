@@ -20,6 +20,25 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+        token = str(refresh.access_token)
+
+        return Response(
+            {
+                "user": UserSerializer(
+                    user, context=self.get_serializer_context()
+                ).data,
+                "token": token,
+                "message": "User registered successfully.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -43,6 +62,8 @@ class UserDetailView(generics.RetrieveAPIView):
 
 
 from django.shortcuts import get_object_or_404
+from notifications.models import Notification
+from django.contrib.contenttypes.models import ContentType
 
 
 class FollowUserView(generics.GenericAPIView):
@@ -62,6 +83,20 @@ class FollowUserView(generics.GenericAPIView):
 
         # static checkers may not know request.user is CustomUser, but runtime will work
         request.user.following.add(target)
+
+        # create a notification for the user being followed
+        if target != request.user:
+            Notification.objects.create(
+                recipient=target,
+                actor=request.user,
+                verb="started following you",
+                target=request.user,
+                target_content_type=ContentType.objects.get_for_model(
+                    request.user.__class__
+                ),
+                target_object_id=request.user.id,
+            )
+
         return Response(
             {"detail": f"You are now following {target.username}."},
             status=status.HTTP_200_OK,
