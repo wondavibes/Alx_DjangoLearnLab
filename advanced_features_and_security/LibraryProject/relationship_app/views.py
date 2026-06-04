@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.detail import DetailView
 from django.contrib.auth import login
-from .models import Author, Book
-from .models import Library, Librarian
+from .models import Book, Library
+from .utils import has_role
 from django.contrib.auth.decorators import permission_required, user_passes_test
 from django.urls import reverse_lazy, reverse
-from .forms import BookForm  # You'll need to create this form
+from .forms import BookForm, CustomUserCreationForm
 from django.contrib.auth.views import LoginView as AuthLoginView
 
 
@@ -40,14 +40,6 @@ def register(request):
     else:
         form = CustomUserCreationForm()
     return render(request, "relationship_app/register.html", {"form": form})
-
-
-def has_role(user, role_name):
-    return (
-        user.is_authenticated
-        and hasattr(user, "profile")
-        and user.profile.role == role_name
-    )
 
 
 @user_passes_test(lambda u: has_role(u, "Admin"))

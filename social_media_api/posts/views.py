@@ -64,7 +64,7 @@ class FeedView(generics.ListAPIView):
     serializer_class = PostSerializer
     pagination_class = PostPagination
 
-    def get_queryset(self) -> QuerySet[Post]:
+    def get_queryset(self) -> QuerySet[Post]:  # type: ignore
         user = self.request.user
         if not getattr(user, "is_authenticated", False):
             raise NotAuthenticated()

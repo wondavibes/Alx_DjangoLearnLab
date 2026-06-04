@@ -11,7 +11,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self) -> QuerySet[Notification]:
+    def get_queryset(self) -> QuerySet[Notification]:  # type: ignore
         # Order unread notifications first, then by newest timestamp
         # `is_read` is False for unread; ordering ascending puts unread before read.
         return Notification.objects.filter(recipient=self.request.user).order_by(
